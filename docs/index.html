@@ -123,6 +123,7 @@ footer{font-size:.8rem;color:var(--muted);max-width:70ch}
       </select>
     </label>
     <label class="toggle" for="unusual"><input type="checkbox" id="unusual"> Hide Fire / Grass / Water</label>
+    <label class="toggle" for="noOfficial"><input type="checkbox" id="noOfficial"> Exclude official starters</label>
   </section>
 
   <fieldset class="gens" id="gens">
@@ -150,6 +151,8 @@ const cap=s=>s[0].toUpperCase()+s.slice(1);
 const $=id=>document.getElementById(id);
 const state={tri:""}; let shown=60;
 const M=DATA.mons, CHART=DATA.chart;
+// The Grass, Fire and Water starters from the main series games, Generations 1 to 9 (Pokédex numbers).
+const OFFICIAL_STARTERS=new Set([1,4,7,152,155,158,252,255,258,387,390,393,495,498,501,650,653,656,722,725,728,810,813,816,906,909,912]);
 const DEFAULTS={maxBase:350,minFinal:450,baseSpread:10,finalSpread:10};
 
 // Rule 1: A beats B when any of A's types is super effective against B's combined typing.
@@ -190,7 +193,7 @@ function build(R){trios=findTrios(R).map((ids,i)=>{
   const key=s.map(x=>x.types.join("/")).sort().join(" · ");
   return {i,s,f,key,bs:Math.max(...bb)-Math.min(...bb),fs:Math.max(...fb)-Math.min(...fb),bAvg:bb.reduce((a,b)=>a+b)/3,fAvg:fb.reduce((a,b)=>a+b)/3,
     text:[...s,...f].map(x=>x.name.toLowerCase()).join(" "),types:new Set(s.flatMap(x=>x.types)),
-    classic:key==="fire · grass · water",dex:Math.min(...s.map(x=>x.id))};
+    classic:key==="fire · grass · water",official:s.some(x=>OFFICIAL_STARTERS.has(x.id)),dex:Math.min(...s.map(x=>x.id))};
 });
 triCount={}; trios.forEach(t=>triCount[t.key]=(triCount[t.key]||0)+1);
 if(state.tri&&!triCount[state.tri])state.tri="";
@@ -263,8 +266,8 @@ function card(t){
   <div class="spread"><span>Starter spread ${t.bs}</span><span>Final spread ${t.fs}</span></div></article>`;
 }
 function filtered(){
-  const q=$("q").value.trim().toLowerCase(), ty=$("type").value, un=$("unusual").checked;
-  let r=trios.filter(t=>(!q||t.text.includes(q))&&(!ty||t.types.has(ty))&&(!selGens.size||t.s.every(x=>selGens.has(x.gen)))&&(!un||!t.classic)&&(!state.tri||t.key===state.tri));
+  const q=$("q").value.trim().toLowerCase(), ty=$("type").value, un=$("unusual").checked, no=$("noOfficial").checked;
+  let r=trios.filter(t=>(!q||t.text.includes(q))&&(!ty||t.types.has(ty))&&(!selGens.size||t.s.every(x=>selGens.has(x.gen)))&&(!un||!t.classic)&&(!no||!t.official)&&(!state.tri||t.key===state.tri));
   const s=$("sort").value;
   const f={spread:(x,y)=>x.bs+x.fs-(y.bs+y.fs)||x.dex-y.dex,final:(x,y)=>y.fAvg-x.fAvg,base:(x,y)=>y.bAvg-x.bAvg,dex:(x,y)=>x.dex-y.dex}[s];
   return r.sort(f);
@@ -275,7 +278,7 @@ function render(){
   $("grid").innerHTML=r.length?r.slice(0,shown).map(card).join(""):`<p class="empty">${trios.length?"No trios match these filters. Try clearing the search or picking “All triangles”.":"No trios meet these rules. Try loosening the stat limits above."}</p>`;
   $("more").hidden=shown>=r.length;
 }
-["q","type","sort","unusual"].forEach(id=>$(id).addEventListener("input",()=>{shown=60;render()}));
+["q","type","sort","unusual","noOfficial"].forEach(id=>$(id).addEventListener("input",()=>{shown=60;render()}));
 $("more").addEventListener("click",()=>{shown+=60;render()});
 renderGens(); applyRules();
 }
