@@ -21,7 +21,7 @@ How the rules are applied:
 - **Type advantage:** A has the advantage over B when at least one of A's types is super effective against B, counting both of B's types. The trio must form a one-way loop (A beats B, B beats C, C beats A) with no advantage running the other way. Their final evolutions must form the same loop. Uses the current type chart, including Fairy.
 - **Unevolved** means the first stage of an evolution line, so Pichu counts and Pikachu does not.
 - Only each species' standard form is included (no regional forms).
-- **Branching evolutions:** when a line branches, like Poliwag into Poliwrath or Politoed, every final evolution must meet rules 1, 5 and 7 in every combination with the other two Pokémon, or the trio is left out. Each trio appears once, listing all of its final evolutions.
+- **Branching evolutions:** when a line branches, like Poliwag into Poliwrath or Politoed, rules 5 and 7 use its highest-BST final evolution. Every final evolution must keep the type loop (rule 1) in every combination with the other two Pokémon. Each trio appears once, listing all of its final evolutions whatever their BST.
 
 ## Project layout
 

@@ -72,6 +72,7 @@ input:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid 
 .pic.sm{width:40px;max-width:40px;flex:none;background:none}
 .evoRow{display:flex;flex-wrap:wrap;gap:2px 6px;align-items:center;min-width:0}
 .evoRow>div{min-width:0;overflow-wrap:normal}
+.used{color:var(--accent);font:500 .7rem/1.3 var(--body);text-transform:uppercase;letter-spacing:.05em}
 .evo{border-top:1px dashed var(--line);padding-top:6px;margin-top:2px;font-size:.82rem;overflow-wrap:anywhere}
 .evo .arrow{color:var(--muted)}
 .cycle{font-size:.8rem;color:var(--muted);background:var(--soft);border-radius:6px;padding:7px 9px;line-height:1.5}
@@ -106,7 +107,7 @@ footer{font-size:.8rem;color:var(--muted);max-width:70ch}
       <details>
         <summary>How the rules are applied</summary>
         <p>A has an advantage over B when at least one of A's types hits B super effectively, counting both of B's types. The trio must form a one-way loop: A beats B, B beats C, C beats A, and no one beats the Pokémon that beats them. Their final evolutions must form the same loop. Type chart is the current one, including Fairy.</p>
-        <p>"Unevolved" means the first stage of its evolution line, so Pichu counts and Pikachu does not. Only each species' standard form is included. When a line branches, like Poliwag into Poliwrath or Politoed, every final evolution must meet the rules in every combination with the other two Pokémon, or the trio is left out. The "Final spread" shown is the widest of those combinations.</p>
+        <p>"Unevolved" means the first stage of its evolution line, so Pichu counts and Pikachu does not. Only each species' standard form is included. When a line branches, like Poliwag into Poliwrath or Politoed, the BST rules use its highest-BST final evolution (marked "used" on the card), and every final evolution must keep the type loop in every combination with the other two Pokémon. All final evolutions are listed, whatever their BST.</p>
         <p>Spreads can go up to 50 and starter BSTs up to 600, which keeps the number of trios small enough to calculate instantly.</p>
         <p>Data from PokeAPI, covering Generations 1 to 9.</p>
       </details>
@@ -175,12 +176,13 @@ function beats(a,b){
   return v;
 }
 // Apply all seven rules. Each trio is {s:[3 starter ids], f:[final ids for each starter]}.
-// A starter with a branching evolution (Poliwag: Poliwrath or Politoed) counts only if
-// every one of its final evolutions passes, in every combination with the other two.
+// When a starter's evolution branches (Poliwag: Poliwrath or Politoed), the stat rules (5 and 7)
+// use its highest-BST final evolution, while the type loop (rule 1) must hold for every
+// combination of final evolutions.
 function findTrios(R){
   const mon=id=>({id,types:M[id][1],ty:typing(M[id][1]),bst:M[id][2]});
-  const cands=DATA.starters.map(([id,fins])=>({...mon(id),finals:fins.map(mon)}))
-    .filter(c=>c.bst<=R.maxBase&&c.finals.every(f=>f.bst>=R.minFinal)).sort((a,b)=>a.bst-b.bst);
+  const cands=DATA.starters.map(([id,fins])=>{const finals=fins.map(mon);return {...mon(id),finals,top:Math.max(...finals.map(f=>f.bst))}})
+    .filter(c=>c.bst<=R.maxBase&&c.top>=R.minFinal).sort((a,b)=>a.bst-b.bst);
   // x>y>z>x with nothing beating back.
   const loops=(x,y,z)=>beats(x,y)&&beats(y,z)&&beats(z,x)&&!beats(y,x)&&!beats(z,y)&&!beats(x,z);
   const out=[];
@@ -191,23 +193,24 @@ function findTrios(R){
         if(ab===ba)continue;
         const [x,y,z]=ab?[a,b,c]:[a,c,b];
         if(!loops(x,y,z))continue;
-        // Every combination of final evolutions must keep the same loop and stay within the spread.
-        let ok=true, worst=0;
+        // Final spread uses each starter's highest-BST final evolution.
+        const spread=Math.max(x.top,y.top,z.top)-Math.min(x.top,y.top,z.top);
+        if(spread>R.finalSpread)continue;
+        // Every combination of final evolutions must keep the same loop.
+        let ok=true;
         for(const fx of x.finals){for(const fy of y.finals){for(const fz of z.finals){
-          const spread=Math.max(fx.bst,fy.bst,fz.bst)-Math.min(fx.bst,fy.bst,fz.bst);
-          if(spread>R.finalSpread||!loops(fx,fy,fz)){ok=false;break}
-          worst=Math.max(worst,spread);
+          if(!loops(fx,fy,fz)){ok=false;break}
         }if(!ok)break}if(!ok)break}
-        if(ok)out.push({s:[x.id,y.id,z.id],f:[x,y,z].map(m=>m.finals.map(f=>f.id)),worst});
+        if(ok)out.push({s:[x.id,y.id,z.id],f:[x,y,z].map(m=>m.finals.map(f=>f.id)),spread});
       }}}
   return out;
 }
 let trios=[], triCount={};
 function build(R){trios=findTrios(R).map((r,i)=>{
   const s=r.s.map(id=>({id,...unpack(M[id])})), f=r.f.map(ids=>ids.map(id=>({id,...unpack(M[id])})));
-  const bb=s.map(x=>x.bst), fb=f.map(fs=>fs.reduce((a,x)=>a+x.bst,0)/fs.length);
+  const bb=s.map(x=>x.bst), fb=f.map(fs=>Math.max(...fs.map(x=>x.bst)));
   const key=s.map(x=>x.types.join("/")).sort().join(" · ");
-  return {i,s,f,key,bs:Math.max(...bb)-Math.min(...bb),fs:r.worst,bAvg:bb.reduce((a,b)=>a+b)/3,fAvg:fb.reduce((a,b)=>a+b)/3,
+  return {i,s,f,key,bs:Math.max(...bb)-Math.min(...bb),fs:r.spread,bAvg:bb.reduce((a,b)=>a+b)/3,fAvg:fb.reduce((a,b)=>a+b)/3,
     text:[...s,...f.flat()].map(x=>x.name.toLowerCase()).join(" "),types:new Set(s.flatMap(x=>x.types)),
     classic:key==="fire · grass · water",official:s.some(x=>OFFICIAL_STARTERS.has(x.id)),dex:Math.min(...s.map(x=>x.id))};
 });
@@ -275,10 +278,10 @@ $("chips").addEventListener("click",e=>{
 function card(t){
   const [a,b,c]=t.s;
   const cell=(m,f)=>`<div class="mon">${pic(m.id)}<div class="nm">${m.name}</div><div class="types">${m.types.map(chip).join("")}</div><div class="bst">BST ${m.bst}<br>Gen ${m.gen}</div>
-    <div class="evo"><span class="arrow">${f.length>1?"evolves to either":"evolves to"}</span>${f.map(e=>`<div class="evoRow">${pic(e.id,true)}<div><b>${e.name}</b><div class="bst">BST ${e.bst}</div></div></div>`).join("")}</div></div>`;
+    <div class="evo"><span class="arrow">${f.length>1?"evolves to either":"evolves to"}</span>${f.map(e=>`<div class="evoRow">${pic(e.id,true)}<div><b>${e.name}</b><div class="bst">BST ${e.bst}</div>${f.length>1&&e.bst===Math.max(...f.map(x=>x.bst))?'<div class="used" title="The highest BST is used for the stat rules">used</div>':""}</div></div>`).join("")}</div></div>`;
   return `<article class="card"><div class="mons">${t.s.map((m,i)=>cell(m,t.f[i])).join("")}</div>
   <div class="cycle"><b>${a.name}</b> beats <b>${b.name}</b>, <b>${b.name}</b> beats <b>${c.name}</b>, <b>${c.name}</b> beats <b>${a.name}</b></div>
-  <div class="spread"><span>Starter spread ${t.bs}</span><span>Final spread ${t.fs}${t.f.some(x=>x.length>1)?" (widest)":""}</span></div></article>`;
+  <div class="spread"><span>Starter spread ${t.bs}</span><span>Final spread ${t.fs}</span></div></article>`;
 }
 function filtered(){
   const q=$("q").value.trim().toLowerCase(), ty=$("type").value, un=$("unusual").checked, no=$("noOfficial").checked;
