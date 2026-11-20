@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Starter Trio Finder</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: field-guide header with the rules, a filter bar, then a grid of trio cards drawn as type triangles */
+:root{
+  --bg:#f3f5f8; --surface:#ffffff; --ink:#18202b; --muted:#5b6675; --line:#d9dee6; --accent:#c8362f; --accent-ink:#ffffff; --soft:#e8ecf2;
+  --display:"Chakra Petch",ui-sans-serif,system-ui,sans-serif;
+  --body:"IBM Plex Sans",ui-sans-serif,system-ui,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#11151b;--surface:#1a2029;--ink:#e8ecf2;--muted:#98a3b3;--line:#2c3441;--accent:#ef5a4f;--accent-ink:#1a0d0c;--soft:#232a35;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#11151b;--surface:#1a2029;--ink:#e8ecf2;--muted:#98a3b3;--line:#2c3441;--accent:#ef5a4f;--accent-ink:#1a0d0c;--soft:#232a35;color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:15px/1.55 var(--body)}
+.wrap{max-width:1180px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:32px 64px;display:grid;gap:28px}
+h1{font:700 clamp(2rem,5vw,3.1rem)/1.05 var(--display);margin:0;letter-spacing:.01em;text-wrap:balance}
+h1 em{font-style:normal;color:var(--accent)}
+.lede{max-width:64ch;color:var(--muted);margin:10px 0 0}
+.top{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:28px;align-items:start}
+@media (max-width:820px){.top{grid-template-columns:1fr}}
+.rules{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:18px 20px;min-width:0}
+.rules h2,.facet h2{font:600 .75rem/1 var(--body);text-transform:uppercase;letter-spacing:.09em;color:var(--muted);margin:0 0 12px}
+.rules ol{margin:0;padding-left:1.4em;display:grid;gap:4px}
+.rules li::marker{font-family:var(--mono);color:var(--accent)}
+.rules details{margin-top:12px;color:var(--muted);font-size:.88rem}
+.rules summary{cursor:pointer;color:var(--ink);font-weight:500}
+.stats{display:flex;flex-wrap:wrap;gap:28px;margin-top:20px}
+.stat b{display:block;font:700 1.9rem/1 var(--display);font-variant-numeric:tabular-nums}
+.stat span{font-size:.8rem;color:var(--muted)}
+.controls{display:flex;flex-wrap:wrap;gap:12px;align-items:end}
+.field{display:grid;gap:4px;font-size:.78rem;color:var(--muted);font-weight:500}
+input[type=search],select{font:inherit;font-size:.95rem;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:8px 10px;min-width:0}
+input[type=search]{width:min(260px,100%)}
+input:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.toggle{display:flex;gap:8px;align-items:center;font-size:.9rem;color:var(--ink);padding-bottom:8px;cursor:pointer}
+.toggle input{accent-color:var(--accent);width:16px;height:16px}
+.facet{min-width:0}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.tri{font:500 .82rem/1 var(--body);border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;padding:6px 10px;cursor:pointer;display:inline-flex;gap:6px;align-items:center}
+.tri[aria-pressed=true]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.tri .n{font-family:var(--mono);font-size:.72rem;opacity:.7}
+.dots{display:inline-flex;gap:2px}.dots i{width:9px;height:9px;border-radius:50%;display:block}
+.linkish{background:none;border:0;color:var(--accent);font:500 .85rem var(--body);cursor:pointer;padding:6px 4px}
+.count{font-size:.9rem;color:var(--muted)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,340px),1fr));gap:14px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px;display:grid;gap:12px;min-width:0}
+.mons{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.mon{display:grid;gap:5px;align-content:start;min-width:0}
+.mon .nm{font:700 1.02rem/1.15 var(--display);overflow-wrap:anywhere}
+.types{display:flex;flex-wrap:wrap;gap:3px}
+.type{font:600 .64rem/1 var(--body);text-transform:uppercase;letter-spacing:.06em;padding:4px 6px;border-radius:4px;color:#fff}
+.type.lt{color:#1b1b1b}
+.bst{font:500 .78rem var(--mono);color:var(--muted);font-variant-numeric:tabular-nums}
+.evo{border-top:1px dashed var(--line);padding-top:6px;margin-top:2px;font-size:.82rem;overflow-wrap:anywhere}
+.evo .arrow{color:var(--muted)}
+.cycle{font-size:.8rem;color:var(--muted);background:var(--soft);border-radius:6px;padding:7px 9px;line-height:1.5}
+.cycle b{color:var(--ink);font-weight:600}
+.spread{display:flex;gap:14px;font:500 .74rem var(--mono);color:var(--muted)}
+.more{justify-self:center;font:600 .95rem var(--body);background:var(--accent);color:var(--accent-ink);border:0;border-radius:8px;padding:10px 20px;cursor:pointer}
+.empty{color:var(--muted);padding:30px 0}
+footer{font-size:.8rem;color:var(--muted);max-width:70ch}
+@media (prefers-reduced-motion:no-preference){.card{animation:in .25s ease-out both}@keyframes in{from{transform:translateY(4px)}to{transform:none}}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>Starter Trio <em>Finder</em></h1>
+      <p class="lede">Every set of three Pokémon that could work as an alternative starter trio: a closed type triangle, low starting stats, and evolutions that grow into equally strong final forms.</p>
+      <div class="stats" id="stats"></div>
+    </div>
+    <section class="rules" aria-labelledby="rules-h">
+      <h2 id="rules-h">A trio is valid when</h2>
+      <ol>
+        <li>Each has one type advantage and one type disadvantage within the trio</li>
+        <li>Each is unevolved</li>
+        <li>Each can evolve at least once</li>
+        <li>Each has a base stat total (BST) of 350 or less</li>
+        <li>Each final evolution has a BST of 450 or more</li>
+        <li>The three starters' BSTs are within 10 of each other</li>
+        <li>The three final evolutions' BSTs are within 10 of each other</li>
+      </ol>
+      <details>
+        <summary>How the rules are applied</summary>
+        <p>A has an advantage over B when at least one of A's types hits B super effectively, counting both of B's types. The trio must form a one-way loop: A beats B, B beats C, C beats A, and no one beats the Pokémon that beats them. Type chart is the current one, including Fairy.</p>
+        <p>"Unevolved" means the first stage of its evolution line, so Pichu counts and Pikachu does not. Only each species' standard form is included. When a line branches, each final evolution is checked separately, so one trio can appear with different final forms.</p>
+        <p>Data from PokeAPI, covering Generations 1 to 9.</p>
+      </details>
+    </section>
+  </header>
+
+  <section class="controls" aria-label="Filters">
+    <label class="field" for="q">Search by Pokémon
+      <input type="search" id="q" placeholder="e.g. Eevee, Gastly, Charizard">
+    </label>
+    <label class="field" for="type">Includes type
+      <select id="type"><option value="">Any type</option></select>
+    </label>
+    <label class="field" for="gen">Starters from
+      <select id="gen"><option value="">Any generation</option></select>
+    </label>
+    <label class="field" for="sort">Sort by
+      <select id="sort">
+        <option value="spread">Closest stats first</option>
+        <option value="final">Strongest finals first</option>
+        <option value="base">Strongest starters first</option>
+        <option value="dex">Pokédex order</option>
+      </select>
+    </label>
+    <label class="toggle" for="unusual"><input type="checkbox" id="unusual"> Hide Fire / Grass / Water</label>
+  </section>
+
+  <section class="facet" aria-labelledby="facet-h">
+    <h2 id="facet-h">Type triangles</h2>
+    <div class="chips" id="chips"></div>
+  </section>
+
+  <p class="count" id="count" aria-live="polite"></p>
+  <div class="grid" id="grid"></div>
+  <button class="more" id="more" type="button" hidden>Show more trios</button>
+
+  <footer>Pokémon and Pokémon character names are trademarks of Nintendo, Game Freak and Creatures. This is an unofficial fan project.</footer>
+</div>
+<script>
+fetch("trios.json").then(r=>r.json()).then(start).catch(()=>{document.getElementById("count").textContent="Could not load the trio data. If you opened this file directly, run a local web server instead (see README).";});
+function start(DATA){
+const TC={normal:["#9a9a7a",0],fire:["#e0632b",0],water:["#4f86e6",0],electric:["#f2c62f",1],grass:["#5aa83a",0],ice:["#7fcfcf",1],fighting:["#b8322a",0],poison:["#9346a0",0],ground:["#d3b061",1],flying:["#8f7ee6",0],psychic:["#ea4f7d",0],bug:["#97a823",0],rock:["#b19b3e",0],ghost:["#6a5590",0],dragon:["#6a3cf0",0],dark:["#6b574a",0],steel:["#9a9ab8",0],fairy:["#e48fb0",1]};
+const cap=s=>s[0].toUpperCase()+s.slice(1);
+const M=DATA.mons, trios=DATA.trios.map((ids,i)=>{
+  const s=ids.slice(0,3).map(id=>({id,...unpack(M[id])})), f=ids.slice(3).map(id=>({id,...unpack(M[id])}));
+  const bb=s.map(x=>x.bst), fb=f.map(x=>x.bst);
+  const key=s.map(x=>x.types.join("/")).sort().join(" · ");
+  return {i,s,f,key,bs:Math.max(...bb)-Math.min(...bb),fs:Math.max(...fb)-Math.min(...fb),bAvg:bb.reduce((a,b)=>a+b)/3,fAvg:fb.reduce((a,b)=>a+b)/3,
+    text:[...s,...f].map(x=>x.name.toLowerCase()).join(" "),types:new Set(s.flatMap(x=>x.types)),gens:new Set(s.map(x=>x.gen)),
+    classic:key==="fire · grass · water",dex:Math.min(...s.map(x=>x.id))};
+});
+function unpack(a){return {name:a[0],types:a[1],bst:a[2],gen:a[3]}}
+const $=id=>document.getElementById(id);
+const state={tri:""}; let shown=60;
+const chip=t=>`<span class="type${TC[t][1]?" lt":""}" style="background:${TC[t][0]}">${t}</span>`;
+const dots=key=>`<span class="dots">${key.split(" · ").map(k=>k.split("/")).map(ts=>`<i style="background:${TC[ts[0]][0]}"></i>`).join("")}</span>`;
+
+// stats + selects
+const triCount={}; trios.forEach(t=>triCount[t.key]=(triCount[t.key]||0)+1);
+const distinct=new Set(trios.map(t=>t.s.map(x=>x.id).sort().join())).size;
+const mons=new Set(trios.flatMap(t=>t.s.map(x=>x.id))).size;
+$("stats").innerHTML=[[trios.length.toLocaleString(),"valid trios"],[distinct.toLocaleString(),"unique starter sets"],[Object.keys(triCount).length,"type triangles"],[mons,"starters used"]].map(([b,s])=>`<div class="stat"><b>${b}</b><span>${s}</span></div>`).join("");
+Object.keys(TC).forEach(t=>$("type").insertAdjacentHTML("beforeend",`<option value="${t}">${cap(t)}</option>`));
+[...new Set(Object.values(M).map(m=>m[3]))].sort((a,b)=>a-b).forEach(g=>$("gen").insertAdjacentHTML("beforeend",`<option value="${g}">Generation ${g}</option>`));
+
+let chipsOpen=false;
+function renderChips(){
+  const list=Object.entries(triCount).sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0]));
+  const vis=chipsOpen?list:list.slice(0,14);
+  $("chips").innerHTML=`<button class="tri" type="button" data-k="" aria-pressed="${!state.tri}">All triangles</button>`+
+    vis.map(([k,n])=>`<button class="tri" type="button" data-k="${k}" aria-pressed="${state.tri===k}">${dots(k)}${k.replace(/\b\w/g,c=>c.toUpperCase())} <span class="n">${n}</span></button>`).join("")+
+    `<button class="linkish" type="button" id="chipToggle">${chipsOpen?"Show fewer":`Show all ${list.length}`}</button>`;
+}
+$("chips").addEventListener("click",e=>{
+  if(e.target.id==="chipToggle"){chipsOpen=!chipsOpen;renderChips();return}
+  const b=e.target.closest(".tri"); if(!b)return; state.tri=b.dataset.k; shown=60; renderChips(); render();
+});
+
+function card(t){
+  const [a,b,c]=t.s;
+  const cell=(m,f)=>`<div class="mon"><div class="nm">${m.name}</div><div class="types">${m.types.map(chip).join("")}</div><div class="bst">BST ${m.bst}<br>Gen ${m.gen}</div>
+    <div class="evo"><span class="arrow">evolves to</span> <b>${f.name}</b><div class="bst">BST ${f.bst}</div></div></div>`;
+  return `<article class="card"><div class="mons">${t.s.map((m,i)=>cell(m,t.f[i])).join("")}</div>
+  <div class="cycle"><b>${a.name}</b> beats <b>${b.name}</b>, <b>${b.name}</b> beats <b>${c.name}</b>, <b>${c.name}</b> beats <b>${a.name}</b></div>
+  <div class="spread"><span>Starter spread ${t.bs}</span><span>Final spread ${t.fs}</span></div></article>`;
+}
+function filtered(){
+  const q=$("q").value.trim().toLowerCase(), ty=$("type").value, g=+$("gen").value, un=$("unusual").checked;
+  let r=trios.filter(t=>(!q||t.text.includes(q))&&(!ty||t.types.has(ty))&&(!g||t.gens.has(g))&&(!un||!t.classic)&&(!state.tri||t.key===state.tri));
+  const s=$("sort").value;
+  const f={spread:(x,y)=>x.bs+x.fs-(y.bs+y.fs)||x.dex-y.dex,final:(x,y)=>y.fAvg-x.fAvg,base:(x,y)=>y.bAvg-x.bAvg,dex:(x,y)=>x.dex-y.dex}[s];
+  return r.sort(f);
+}
+function render(){
+  const r=filtered();
+  $("count").textContent=r.length?`Showing ${Math.min(shown,r.length).toLocaleString()} of ${r.length.toLocaleString()} trios`:"";
+  $("grid").innerHTML=r.length?r.slice(0,shown).map(card).join(""):`<p class="empty">No trios match these filters. Try clearing the search or picking “All triangles”.</p>`;
+  $("more").hidden=shown>=r.length;
+}
+["q","type","gen","sort","unusual"].forEach(id=>$(id).addEventListener("input",()=>{shown=60;render()}));
+$("more").addEventListener("click",()=>{shown+=60;render()});
+renderChips(); render();
+}
+</script>
+</body>
+</html>
