@@ -59,20 +59,22 @@ input:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid 
 .count{font-size:.9rem;color:var(--muted)}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,340px),1fr));gap:14px}
 .card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px;display:grid;gap:12px;min-width:0}
-.mons{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
-.mon{display:grid;gap:5px;align-content:start;min-width:0}
+/* The three Pokémon share rows (image, name, types, stats, evolutions) so each row lines up across the card. */
+.mons{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-template-rows:repeat(4,auto) 1fr;gap:5px 8px}
+.mon{display:grid;grid-row:span 5;grid-template-rows:subgrid;align-content:start;min-width:0}
 .mon .nm{font:700 1.02rem/1.15 var(--display);overflow-wrap:anywhere}
-.types{display:flex;flex-wrap:wrap;gap:3px}
+.types{display:flex;flex-wrap:wrap;gap:3px;align-content:start}
 .type{font:600 .64rem/1 var(--body);text-transform:uppercase;letter-spacing:.06em;padding:4px 6px;border-radius:4px;color:#fff}
 .type.lt{color:#1b1b1b}
 .bst{font:500 .78rem var(--mono);color:var(--muted);font-variant-numeric:tabular-nums}
 .pic{display:block;width:100%;max-width:96px;height:auto;aspect-ratio:1;object-fit:contain}
 .pic.art{background:radial-gradient(circle at 50% 55%,var(--soft) 0 62%,transparent 63%)}
 .pic.sprite{image-rendering:pixelated}
-.pic.sm{width:40px;max-width:40px;flex:none;background:none}
-.evoRow{display:flex;flex-wrap:wrap;gap:2px 6px;align-items:center;min-width:0}
-.evoRow>div{min-width:0;overflow-wrap:normal}
-.evo{border-top:1px dashed var(--line);padding-top:6px;margin-top:2px;font-size:.82rem;overflow-wrap:anywhere}
+.pic.sm{width:36px;max-width:36px;flex:none;background:none;margin:-2px 0}
+.evo{border-top:1px dashed var(--line);padding-top:6px;margin-top:2px;font-size:.82rem;display:grid;gap:6px;align-content:start;min-width:0}
+.evoRow{display:grid;gap:1px;min-width:0}
+.evoRow b{overflow-wrap:anywhere;line-height:1.2}
+.evoLine{display:flex;gap:6px;align-items:center}
 .evo .arrow{color:var(--muted)}
 .cycle{font-size:.8rem;color:var(--muted);background:var(--soft);border-radius:6px;padding:7px 9px;line-height:1.5}
 .cycle b{color:var(--ink);font-weight:600}
@@ -277,7 +279,7 @@ $("chips").addEventListener("click",e=>{
 function card(t){
   const [a,b,c]=t.s;
   const cell=(m,f)=>`<div class="mon">${pic(m.id)}<div class="nm">${m.name}</div><div class="types">${m.types.map(chip).join("")}</div><div class="bst">BST ${m.bst}<br>Gen ${m.gen}</div>
-    <div class="evo"><span class="arrow">${f.length>1?"evolves to either":"evolves to"}</span>${f.map(e=>`<div class="evoRow">${pic(e.id,true)}<div><b>${e.name}</b><div class="bst">BST ${e.bst}</div></div></div>`).join("")}</div></div>`;
+    <div class="evo"><span class="arrow">${f.length>1?"evolves to either":"evolves to"}</span>${f.map(e=>`<div class="evoRow"><b>${e.name}</b><div class="evoLine">${pic(e.id,true)}<span class="bst">BST ${e.bst}</span></div></div>`).join("")}</div></div>`;
   return `<article class="card"><div class="mons">${t.s.map((m,i)=>cell(m,t.f[i])).join("")}</div>
   <div class="cycle"><b>${a.name}</b> beats <b>${b.name}</b>, <b>${b.name}</b> beats <b>${c.name}</b>, <b>${c.name}</b> beats <b>${a.name}</b></div>
   <div class="spread"><span>Starter spread ${t.bs}</span><span>Final spread ${t.fs}</span></div></article>`;
