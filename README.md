@@ -6,7 +6,7 @@ A website showing alternate possible starter combinations for Pokémon that foll
 
 A trio of Pokémon is a valid starter trio when:
 
-1. Each Pokémon has one type advantage and one type disadvantage against the others in the trio
+1. Each Pokémon has one type advantage and one type disadvantage against the others in the trio, and their final evolutions keep the same loop
 2. Each Pokémon is unevolved
 3. Each Pokémon can evolve at least once
 4. Each Pokémon has a base stat total (BST) of 325 or less
@@ -18,10 +18,10 @@ The numbers in rules 4 to 7 can be changed on the website. Edit them in the rule
 
 How the rules are applied:
 
-- **Type advantage:** A has the advantage over B when at least one of A's types is super effective against B, counting both of B's types. The trio must form a one-way loop (A beats B, B beats C, C beats A) with no advantage running the other way. Uses the current type chart, including Fairy.
+- **Type advantage:** A has the advantage over B when at least one of A's types is super effective against B, counting both of B's types. The trio must form a one-way loop (A beats B, B beats C, C beats A) with no advantage running the other way. Their final evolutions must form the same loop. Uses the current type chart, including Fairy.
 - **Unevolved** means the first stage of an evolution line, so Pichu counts and Pikachu does not.
 - Only each species' standard form is included (no regional forms).
-- When an evolution line branches, each final evolution is checked separately, so a trio can appear more than once with different final forms.
+- **Branching evolutions:** when a line branches, like Poliwag into Poliwrath or Politoed, every final evolution must meet rules 1, 5 and 7 in every combination with the other two Pokémon, or the trio is left out. Each trio appears once, listing all of its final evolutions.
 
 ## Project layout
 
