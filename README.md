@@ -9,10 +9,10 @@ A trio of Pokémon is a valid starter trio when:
 1. Each Pokémon has one type advantage and one type disadvantage against the others in the trio, and their final evolutions keep the same loop
 2. Each Pokémon is unevolved
 3. Each Pokémon can evolve at least once
-4. Each Pokémon has a base stat total (BST) of 325 or less
+4. Each Pokémon has a base stat total (BST) of 350 or less
 5. Each Pokémon's final evolution has a BST of 475 or more
-6. The starters' BSTs differ by no more than 20
-7. The final evolutions' BSTs differ by no more than 30
+6. The starters' BSTs differ by no more than 25
+7. The final evolutions' BSTs differ by no more than 35
 
 The numbers in rules 4 to 7 can be changed on the website. Edit them in the rules box and the list updates straight away. Starter BSTs go up to 600 and spreads up to 50, so the calculation stays quick.
 
