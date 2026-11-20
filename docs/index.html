@@ -119,9 +119,6 @@ footer{font-size:.8rem;color:var(--muted);max-width:70ch}
     <label class="field" for="q">Search by Pokémon
       <input type="search" id="q" placeholder="e.g. Eevee, Gastly, Charizard">
     </label>
-    <label class="field" for="type">Includes type
-      <select id="type"><option value="">Any type</option></select>
-    </label>
     <label class="field" for="sort">Sort by
       <select id="sort">
         <option value="spread">Closest stats first</option>
@@ -133,6 +130,12 @@ footer{font-size:.8rem;color:var(--muted);max-width:70ch}
     <label class="toggle" for="unusual"><input type="checkbox" id="unusual"> Hide Fire / Grass / Water</label>
     <label class="toggle" for="noOfficial"><input type="checkbox" id="noOfficial"> Exclude official starters</label>
   </section>
+
+  <fieldset class="gens" id="types">
+    <legend>Types</legend>
+    <p class="hint" id="typeHint"></p>
+    <div class="chips" id="typeChips"></div>
+  </fieldset>
 
   <fieldset class="gens" id="gens">
     <legend>Generations</legend>
@@ -247,7 +250,19 @@ Object.keys(DEFAULTS).forEach(k=>{
   $(k).addEventListener("change",()=>{const R=readRules();if(R)$(k).value=R[k];clearTimeout(ruleTimer);applyRules()});
 });
 $("resetRules").addEventListener("click",()=>{for(const k in DEFAULTS)$(k).value=DEFAULTS[k];applyRules()});
-Object.keys(TC).forEach(t=>$("type").insertAdjacentHTML("beforeend",`<option value="${t}">${cap(t)}</option>`));
+const selTypes=new Set();
+const listOf=a=>a.length>1?a.slice(0,-1).join(", ")+" and "+a[a.length-1]:String(a[0]);
+function renderTypes(){
+  $("typeChips").innerHTML=Object.keys(TC).map(t=>`<button class="tri" type="button" data-t="${t}" aria-pressed="${selTypes.has(t)}"><span class="dots"><i style="background:${TC[t][0]}"></i></span>${cap(t)}</button>`).join("")+
+    (selTypes.size?`<button class="linkish" type="button" id="typeClear">Clear</button>`:"");
+  $("typeHint").textContent=selTypes.size?`Showing trios whose starters include ${selTypes.size>1?"all of ":""}${listOf(Object.keys(TC).filter(t=>selTypes.has(t)).map(cap))}.`
+    :"Showing trios of every type. Pick one or more to show only trios whose starters include all of the selected types.";
+}
+$("typeChips").addEventListener("click",e=>{
+  if(e.target.id==="typeClear"){selTypes.clear()}
+  else{const b=e.target.closest("[data-t]");if(!b)return;const t=b.dataset.t;selTypes.has(t)?selTypes.delete(t):selTypes.add(t)}
+  shown=60;renderTypes();render();
+});
 const allGens=[...new Set(Object.values(M).map(m=>m[3]))].sort((a,b)=>a-b);
 const selGens=new Set();
 function listGens(){const g=[...selGens].sort((a,b)=>a-b);return g.length>1?g.slice(0,-1).join(", ")+" and "+g[g.length-1]:String(g[0])}
@@ -285,8 +300,8 @@ function card(t){
   <div class="spread"><span>Starter spread ${t.bs}</span><span>Final spread ${t.fs}</span></div></article>`;
 }
 function filtered(){
-  const q=$("q").value.trim().toLowerCase(), ty=$("type").value, un=$("unusual").checked, no=$("noOfficial").checked;
-  let r=trios.filter(t=>(!q||t.text.includes(q))&&(!ty||t.types.has(ty))&&(!selGens.size||t.s.every(x=>selGens.has(x.gen)))&&(!un||!t.classic)&&(!no||!t.official)&&(!state.tri||t.key===state.tri));
+  const q=$("q").value.trim().toLowerCase(), un=$("unusual").checked, no=$("noOfficial").checked;
+  let r=trios.filter(t=>(!q||t.text.includes(q))&&[...selTypes].every(x=>t.types.has(x))&&(!selGens.size||t.s.every(x=>selGens.has(x.gen)))&&(!un||!t.classic)&&(!no||!t.official)&&(!state.tri||t.key===state.tri));
   const s=$("sort").value;
   const f={spread:(x,y)=>x.bs+x.fs-(y.bs+y.fs)||x.dex-y.dex,final:(x,y)=>y.fAvg-x.fAvg,base:(x,y)=>y.bAvg-x.bAvg,dex:(x,y)=>x.dex-y.dex}[s];
   return r.sort(f);
@@ -297,9 +312,9 @@ function render(){
   $("grid").innerHTML=r.length?r.slice(0,shown).map(card).join(""):`<p class="empty">${trios.length?"No trios match these filters. Try clearing the search or picking “All triangles”.":"No trios meet these rules. Try loosening the stat limits above."}</p>`;
   $("more").hidden=shown>=r.length;
 }
-["q","type","sort","unusual","noOfficial"].forEach(id=>$(id).addEventListener("input",()=>{shown=60;render()}));
+["q","sort","unusual","noOfficial"].forEach(id=>$(id).addEventListener("input",()=>{shown=60;render()}));
 $("more").addEventListener("click",()=>{shown+=60;render()});
-renderGens(); applyRules();
+renderTypes(); renderGens(); applyRules();
 }
 </script>
 </body>
