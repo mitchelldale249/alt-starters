@@ -99,10 +99,10 @@ footer{font-size:.8rem;color:var(--muted);max-width:70ch}
         <li>Each has one type advantage and one type disadvantage within the trio, both as starters and as final evolutions</li>
         <li>Each is unevolved</li>
         <li>Each can evolve at least once</li>
-        <li>Each has a base stat total (BST) of <input class="num" type="number" id="maxBase" min="100" max="600" step="5" value="325" aria-label="Highest starter BST"> or less</li>
+        <li>Each has a base stat total (BST) of <input class="num" type="number" id="maxBase" min="100" max="600" step="5" value="350" aria-label="Highest starter BST"> or less</li>
         <li>Each final evolution has a BST of <input class="num" type="number" id="minFinal" min="100" max="800" step="5" value="475" aria-label="Lowest final evolution BST"> or more</li>
-        <li>The three starters' BSTs are within <input class="num" type="number" id="baseSpread" min="0" max="50" step="1" value="20" aria-label="Largest gap between starter BSTs"> of each other</li>
-        <li>The three final evolutions' BSTs are within <input class="num" type="number" id="finalSpread" min="0" max="50" step="1" value="30" aria-label="Largest gap between final evolution BSTs"> of each other</li>
+        <li>The three starters' BSTs are within <input class="num" type="number" id="baseSpread" min="0" max="50" step="1" value="25" aria-label="Largest gap between starter BSTs"> of each other</li>
+        <li>The three final evolutions' BSTs are within <input class="num" type="number" id="finalSpread" min="0" max="50" step="1" value="35" aria-label="Largest gap between final evolution BSTs"> of each other</li>
       </ol>
       <div class="ruleBar"><span id="ruleNote">Change the numbers to explore other rules.</span><button class="linkish" type="button" id="resetRules" hidden>Reset to original rules</button></div>
       <details>
@@ -164,7 +164,7 @@ const state={tri:""}; let shown=60;
 const M=DATA.mons, CHART=DATA.chart;
 // The Grass, Fire and Water starters from the main series games, Generations 1 to 9 (Pokédex numbers).
 const OFFICIAL_STARTERS=new Set([1,4,7,152,155,158,252,255,258,387,390,393,495,498,501,650,653,656,722,725,728,810,813,816,906,909,912]);
-const DEFAULTS={maxBase:325,minFinal:475,baseSpread:20,finalSpread:30};
+const DEFAULTS={maxBase:350,minFinal:475,baseSpread:25,finalSpread:35};
 
 // Rule 1: A beats B when any of A's types is super effective against B's combined typing.
 // Results are cached per pair of typings, numbered so lookups stay fast.
