@@ -29,6 +29,10 @@ h1 em{font-style:normal;color:var(--accent)}
 .rules h2,.facet h2{font:600 .75rem/1 var(--body);text-transform:uppercase;letter-spacing:.09em;color:var(--muted);margin:0 0 12px}
 .rules ol{margin:0;padding-left:1.4em;display:grid;gap:4px}
 .rules li::marker{font-family:var(--mono);color:var(--accent)}
+.num{font:500 .92rem var(--mono);width:4.6em;padding:2px 6px;border:1px solid var(--line);border-radius:6px;background:var(--soft);color:var(--ink);text-align:right;font-variant-numeric:tabular-nums}
+.num:invalid{border-color:var(--accent)}
+.ruleBar{display:flex;flex-wrap:wrap;gap:4px 12px;align-items:center;justify-content:space-between;margin-top:10px;font-size:.82rem;color:var(--muted)}
+.ruleBar .linkish{padding:2px 0}
 .rules details{margin-top:12px;color:var(--muted);font-size:.88rem}
 .rules summary{cursor:pointer;color:var(--ink);font-weight:500}
 .stats{display:flex;flex-wrap:wrap;gap:28px;margin-top:20px}
@@ -87,15 +91,17 @@ footer{font-size:.8rem;color:var(--muted);max-width:70ch}
         <li>Each has one type advantage and one type disadvantage within the trio</li>
         <li>Each is unevolved</li>
         <li>Each can evolve at least once</li>
-        <li>Each has a base stat total (BST) of 350 or less</li>
-        <li>Each final evolution has a BST of 450 or more</li>
-        <li>The three starters' BSTs are within 10 of each other</li>
-        <li>The three final evolutions' BSTs are within 10 of each other</li>
+        <li>Each has a base stat total (BST) of <input class="num" type="number" id="maxBase" min="100" max="600" step="5" value="350" aria-label="Highest starter BST"> or less</li>
+        <li>Each final evolution has a BST of <input class="num" type="number" id="minFinal" min="100" max="800" step="5" value="450" aria-label="Lowest final evolution BST"> or more</li>
+        <li>The three starters' BSTs are within <input class="num" type="number" id="baseSpread" min="0" max="50" step="1" value="10" aria-label="Largest gap between starter BSTs"> of each other</li>
+        <li>The three final evolutions' BSTs are within <input class="num" type="number" id="finalSpread" min="0" max="50" step="1" value="10" aria-label="Largest gap between final evolution BSTs"> of each other</li>
       </ol>
+      <div class="ruleBar"><span id="ruleNote">Change the numbers to explore other rules.</span><button class="linkish" type="button" id="resetRules" hidden>Reset to original rules</button></div>
       <details>
         <summary>How the rules are applied</summary>
         <p>A has an advantage over B when at least one of A's types hits B super effectively, counting both of B's types. The trio must form a one-way loop: A beats B, B beats C, C beats A, and no one beats the Pokémon that beats them. Type chart is the current one, including Fairy.</p>
         <p>"Unevolved" means the first stage of its evolution line, so Pichu counts and Pikachu does not. Only each species' standard form is included. When a line branches, each final evolution is checked separately, so one trio can appear with different final forms.</p>
+        <p>Spreads can go up to 50 and starter BSTs up to 600, which keeps the number of trios small enough to calculate instantly.</p>
         <p>Data from PokeAPI, covering Generations 1 to 9.</p>
       </details>
     </section>
@@ -137,11 +143,48 @@ footer{font-size:.8rem;color:var(--muted);max-width:70ch}
   <footer>Pokémon and Pokémon character names are trademarks of Nintendo, Game Freak and Creatures. This is an unofficial fan project.</footer>
 </div>
 <script>
-fetch("trios.json").then(r=>r.json()).then(start).catch(()=>{document.getElementById("count").textContent="Could not load the trio data. If you opened this file directly, run a local web server instead (see README).";});
+fetch("pokemon.json").then(r=>r.json()).then(start).catch(()=>{document.getElementById("count").textContent="Could not load the trio data. If you opened this file directly, run a local web server instead (see README).";});
 function start(DATA){
 const TC={normal:["#9a9a7a",0],fire:["#e0632b",0],water:["#4f86e6",0],electric:["#f2c62f",1],grass:["#5aa83a",0],ice:["#7fcfcf",1],fighting:["#b8322a",0],poison:["#9346a0",0],ground:["#d3b061",1],flying:["#8f7ee6",0],psychic:["#ea4f7d",0],bug:["#97a823",0],rock:["#b19b3e",0],ghost:["#6a5590",0],dragon:["#6a3cf0",0],dark:["#6b574a",0],steel:["#9a9ab8",0],fairy:["#e48fb0",1]};
 const cap=s=>s[0].toUpperCase()+s.slice(1);
-const M=DATA.mons, trios=DATA.trios.map((ids,i)=>{
+const $=id=>document.getElementById(id);
+const state={tri:""}; let shown=60;
+const M=DATA.mons, CHART=DATA.chart;
+const DEFAULTS={maxBase:350,minFinal:450,baseSpread:10,finalSpread:10};
+
+// Rule 1: A beats B when any of A's types is super effective against B's combined typing.
+// Results are cached per pair of typings, numbered so lookups stay fast.
+const typingId=new Map(), beatsCache=new Map();
+const typing=types=>{const k=types.join("/");if(!typingId.has(k))typingId.set(k,typingId.size);return typingId.get(k)};
+function beats(a,b){
+  const k=a.ty*4096+b.ty;
+  let v=beatsCache.get(k);
+  if(v===undefined){v=a.types.some(t=>b.types.reduce((m,d)=>m*(CHART[t]?.[d]??1),1)>1);beatsCache.set(k,v)}
+  return v;
+}
+// Apply all seven rules and return each trio as [starter ids..., final ids...].
+function findTrios(R){
+  const mon=id=>({id,types:M[id][1],ty:typing(M[id][1]),bst:M[id][2]});
+  const cands=DATA.starters.map(([id,fins])=>({...mon(id),finals:fins.map(mon).filter(f=>f.bst>=R.minFinal)}))
+    .filter(c=>c.bst<=R.maxBase&&c.finals.length).sort((a,b)=>a.bst-b.bst);
+  const out=[];
+  for(let i=0;i<cands.length;i++){const a=cands[i];
+    for(let j=i+1;j<cands.length&&cands[j].bst-a.bst<=R.baseSpread;j++){const b=cands[j];
+      for(let k=j+1;k<cands.length&&cands[k].bst-a.bst<=R.baseSpread;k++){const c=cands[k];
+        // A one-way loop: either a>b>c>a or a>c>b>a, with nothing beating back.
+        const ab=beats(a,b), ba=beats(b,a);
+        if(ab===ba)continue;
+        const loop=ab?[a,b,c]:[a,c,b], [x,y,z]=loop;
+        if(!(beats(x,y)&&beats(y,z)&&beats(z,x))||beats(y,x)||beats(z,y)||beats(x,z))continue;
+        for(const f0 of loop[0].finals)for(const f1 of loop[1].finals)for(const f2 of loop[2].finals){
+          const t=[f0.bst,f1.bst,f2.bst];
+          if(Math.max(...t)-Math.min(...t)<=R.finalSpread)out.push([loop[0].id,loop[1].id,loop[2].id,f0.id,f1.id,f2.id]);
+        }
+      }}}
+  return out;
+}
+let trios=[], triCount={};
+function build(R){trios=findTrios(R).map((ids,i)=>{
   const s=ids.slice(0,3).map(id=>({id,...unpack(M[id])})), f=ids.slice(3).map(id=>({id,...unpack(M[id])}));
   const bb=s.map(x=>x.bst), fb=f.map(x=>x.bst);
   const key=s.map(x=>x.types.join("/")).sort().join(" · ");
@@ -149,17 +192,39 @@ const M=DATA.mons, trios=DATA.trios.map((ids,i)=>{
     text:[...s,...f].map(x=>x.name.toLowerCase()).join(" "),types:new Set(s.flatMap(x=>x.types)),
     classic:key==="fire · grass · water",dex:Math.min(...s.map(x=>x.id))};
 });
-function unpack(a){return {name:a[0],types:a[1],bst:a[2],gen:a[3]}}
-const $=id=>document.getElementById(id);
-const state={tri:""}; let shown=60;
-const chip=t=>`<span class="type${TC[t][1]?" lt":""}" style="background:${TC[t][0]}">${t}</span>`;
-const dots=key=>`<span class="dots">${key.split(" · ").map(k=>k.split("/")).map(ts=>`<i style="background:${TC[ts[0]][0]}"></i>`).join("")}</span>`;
-
-// stats + selects
-const triCount={}; trios.forEach(t=>triCount[t.key]=(triCount[t.key]||0)+1);
+triCount={}; trios.forEach(t=>triCount[t.key]=(triCount[t.key]||0)+1);
+if(state.tri&&!triCount[state.tri])state.tri="";
 const distinct=new Set(trios.map(t=>t.s.map(x=>x.id).sort().join())).size;
 const mons=new Set(trios.flatMap(t=>t.s.map(x=>x.id))).size;
 $("stats").innerHTML=[[trios.length.toLocaleString(),"valid trios"],[distinct.toLocaleString(),"unique starter sets"],[Object.keys(triCount).length,"type triangles"],[mons,"starters used"]].map(([b,s])=>`<div class="stat"><b>${b}</b><span>${s}</span></div>`).join("");
+}
+function unpack(a){return {name:a[0],types:a[1],bst:a[2],gen:a[3]}}
+const chip=t=>`<span class="type${TC[t][1]?" lt":""}" style="background:${TC[t][0]}">${t}</span>`;
+const dots=key=>`<span class="dots">${key.split(" · ").map(k=>k.split("/")).map(ts=>`<i style="background:${TC[ts[0]][0]}"></i>`).join("")}</span>`;
+
+// rule inputs
+function readRules(){
+  const R={};
+  for(const k in DEFAULTS){const el=$(k), v=Math.round(+el.value);
+    if(el.value===""||!Number.isFinite(v))return null;
+    R[k]=Math.min(+el.max,Math.max(+el.min,v));}
+  return R;
+}
+let ruleTimer;
+function applyRules(){
+  const R=readRules();
+  if(!R){$("ruleNote").textContent="Enter a number in each box.";return}
+  build(R); shown=60;
+  const changed=Object.keys(DEFAULTS).some(k=>R[k]!==DEFAULTS[k]);
+  $("resetRules").hidden=!changed;
+  $("ruleNote").textContent=changed?"Using your custom rules.":"Change the numbers to explore other rules.";
+  renderChips(); render();
+}
+Object.keys(DEFAULTS).forEach(k=>{
+  $(k).addEventListener("input",()=>{clearTimeout(ruleTimer);ruleTimer=setTimeout(applyRules,250)});
+  $(k).addEventListener("change",()=>{const R=readRules();if(R)$(k).value=R[k];clearTimeout(ruleTimer);applyRules()});
+});
+$("resetRules").addEventListener("click",()=>{for(const k in DEFAULTS)$(k).value=DEFAULTS[k];applyRules()});
 Object.keys(TC).forEach(t=>$("type").insertAdjacentHTML("beforeend",`<option value="${t}">${cap(t)}</option>`));
 const allGens=[...new Set(Object.values(M).map(m=>m[3]))].sort((a,b)=>a-b);
 const selGens=new Set();
@@ -207,12 +272,12 @@ function filtered(){
 function render(){
   const r=filtered();
   $("count").textContent=r.length?`Showing ${Math.min(shown,r.length).toLocaleString()} of ${r.length.toLocaleString()} trios`:"";
-  $("grid").innerHTML=r.length?r.slice(0,shown).map(card).join(""):`<p class="empty">No trios match these filters. Try clearing the search or picking “All triangles”.</p>`;
+  $("grid").innerHTML=r.length?r.slice(0,shown).map(card).join(""):`<p class="empty">${trios.length?"No trios match these filters. Try clearing the search or picking “All triangles”.":"No trios meet these rules. Try loosening the stat limits above."}</p>`;
   $("more").hidden=shown>=r.length;
 }
 ["q","type","sort","unusual"].forEach(id=>$(id).addEventListener("input",()=>{shown=60;render()}));
 $("more").addEventListener("click",()=>{shown+=60;render()});
-renderGens(); renderChips(); render();
+renderGens(); applyRules();
 }
 </script>
 </body>

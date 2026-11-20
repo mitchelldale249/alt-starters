@@ -14,6 +14,8 @@ A trio of Pokémon is a valid starter trio when:
 6. The starters' BSTs differ by no more than 10
 7. The final evolutions' BSTs differ by no more than 10
 
+The numbers in rules 4 to 7 can be changed on the website. Edit them in the rules box and the list updates straight away. Starter BSTs go up to 600 and spreads up to 50, so the calculation stays quick.
+
 How the rules are applied:
 
 - **Type advantage:** A has the advantage over B when at least one of A's types is super effective against B, counting both of B's types. The trio must form a one-way loop (A beats B, B beats C, C beats A) with no advantage running the other way. Uses the current type chart, including Fairy.
@@ -25,23 +27,23 @@ How the rules are applied:
 
 | Path | What it is |
 | --- | --- |
-| `scripts/find_trios.py` | Downloads Pokémon data from [PokeAPI](https://pokeapi.co/), applies the rules and writes `docs/trios.json` |
-| `docs/index.html` | The website |
-| `docs/trios.json` | The list of valid trios the website shows |
+| `scripts/build_data.py` | Downloads Pokémon data from [PokeAPI](https://pokeapi.co/) and writes `docs/pokemon.json` |
+| `docs/pokemon.json` | Every unevolved Pokémon that can evolve, its final evolutions, and the type chart |
+| `docs/index.html` | The website. It applies the rules to `pokemon.json` in the browser, which is what lets you change the stat limits |
 
 ## Updating the data
 
 Requires Python 3, no extra packages:
 
 ```bash
-python3 scripts/find_trios.py
+python3 scripts/build_data.py
 ```
 
 Downloaded data is cached in `.cache/`. Delete that folder to fetch fresh data, for example after new Pokémon are released.
 
 ## Viewing the site locally
 
-The page loads `trios.json`, which browsers block when you open the file directly, so serve the folder instead:
+The page loads `pokemon.json`, which browsers block when you open the file directly, so serve the folder instead:
 
 ```bash
 python3 -m http.server --directory docs 8000
