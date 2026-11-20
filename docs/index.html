@@ -44,6 +44,10 @@ input:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid 
 .facet{min-width:0}
 .chips{display:flex;flex-wrap:wrap;gap:6px}
 .tri{font:500 .82rem/1 var(--body);border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;padding:6px 10px;cursor:pointer;display:inline-flex;gap:6px;align-items:center}
+.gens{border:0;margin:0;padding:0;min-width:0;display:grid;gap:10px}
+.gens legend{font:600 .75rem/1 var(--body);text-transform:uppercase;letter-spacing:.09em;color:var(--muted);padding:0;margin-bottom:10px}
+.hint{margin:0;font-size:.85rem;color:var(--muted)}
+.gen{font-variant-numeric:tabular-nums}
 .tri[aria-pressed=true]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
 .tri .n{font-family:var(--mono);font-size:.72rem;opacity:.7}
 .dots{display:inline-flex;gap:2px}.dots i{width:9px;height:9px;border-radius:50%;display:block}
@@ -104,9 +108,6 @@ footer{font-size:.8rem;color:var(--muted);max-width:70ch}
     <label class="field" for="type">Includes type
       <select id="type"><option value="">Any type</option></select>
     </label>
-    <label class="field" for="gen">Starters from
-      <select id="gen"><option value="">Any generation</option></select>
-    </label>
     <label class="field" for="sort">Sort by
       <select id="sort">
         <option value="spread">Closest stats first</option>
@@ -117,6 +118,12 @@ footer{font-size:.8rem;color:var(--muted);max-width:70ch}
     </label>
     <label class="toggle" for="unusual"><input type="checkbox" id="unusual"> Hide Fire / Grass / Water</label>
   </section>
+
+  <fieldset class="gens" id="gens">
+    <legend>Generations</legend>
+    <p class="hint" id="genHint">Showing trios from every generation. Pick one or more to show only trios whose three starters all come from those generations.</p>
+    <div class="chips" id="genChips"></div>
+  </fieldset>
 
   <section class="facet" aria-labelledby="facet-h">
     <h2 id="facet-h">Type triangles</h2>
@@ -139,7 +146,7 @@ const M=DATA.mons, trios=DATA.trios.map((ids,i)=>{
   const bb=s.map(x=>x.bst), fb=f.map(x=>x.bst);
   const key=s.map(x=>x.types.join("/")).sort().join(" · ");
   return {i,s,f,key,bs:Math.max(...bb)-Math.min(...bb),fs:Math.max(...fb)-Math.min(...fb),bAvg:bb.reduce((a,b)=>a+b)/3,fAvg:fb.reduce((a,b)=>a+b)/3,
-    text:[...s,...f].map(x=>x.name.toLowerCase()).join(" "),types:new Set(s.flatMap(x=>x.types)),gens:new Set(s.map(x=>x.gen)),
+    text:[...s,...f].map(x=>x.name.toLowerCase()).join(" "),types:new Set(s.flatMap(x=>x.types)),
     classic:key==="fire · grass · water",dex:Math.min(...s.map(x=>x.id))};
 });
 function unpack(a){return {name:a[0],types:a[1],bst:a[2],gen:a[3]}}
@@ -154,7 +161,20 @@ const distinct=new Set(trios.map(t=>t.s.map(x=>x.id).sort().join())).size;
 const mons=new Set(trios.flatMap(t=>t.s.map(x=>x.id))).size;
 $("stats").innerHTML=[[trios.length.toLocaleString(),"valid trios"],[distinct.toLocaleString(),"unique starter sets"],[Object.keys(triCount).length,"type triangles"],[mons,"starters used"]].map(([b,s])=>`<div class="stat"><b>${b}</b><span>${s}</span></div>`).join("");
 Object.keys(TC).forEach(t=>$("type").insertAdjacentHTML("beforeend",`<option value="${t}">${cap(t)}</option>`));
-[...new Set(Object.values(M).map(m=>m[3]))].sort((a,b)=>a-b).forEach(g=>$("gen").insertAdjacentHTML("beforeend",`<option value="${g}">Generation ${g}</option>`));
+const allGens=[...new Set(Object.values(M).map(m=>m[3]))].sort((a,b)=>a-b);
+const selGens=new Set();
+function listGens(){const g=[...selGens].sort((a,b)=>a-b);return g.length>1?g.slice(0,-1).join(", ")+" and "+g[g.length-1]:String(g[0])}
+function renderGens(){
+  $("genChips").innerHTML=allGens.map(g=>`<button class="tri gen" type="button" data-g="${g}" aria-pressed="${selGens.has(g)}">Gen ${g}</button>`).join("")+
+    (selGens.size?`<button class="linkish" type="button" id="genClear">Clear</button>`:"");
+  $("genHint").textContent=selGens.size?`Showing trios whose three starters all come from Generation${selGens.size>1?"s":""} ${listGens()}.`
+    :"Showing trios from every generation. Pick one or more to show only trios whose three starters all come from those generations.";
+}
+$("genChips").addEventListener("click",e=>{
+  if(e.target.id==="genClear"){selGens.clear()}
+  else{const b=e.target.closest("[data-g]");if(!b)return;const g=+b.dataset.g;selGens.has(g)?selGens.delete(g):selGens.add(g)}
+  shown=60;renderGens();render();
+});
 
 let chipsOpen=false;
 function renderChips(){
@@ -178,8 +198,8 @@ function card(t){
   <div class="spread"><span>Starter spread ${t.bs}</span><span>Final spread ${t.fs}</span></div></article>`;
 }
 function filtered(){
-  const q=$("q").value.trim().toLowerCase(), ty=$("type").value, g=+$("gen").value, un=$("unusual").checked;
-  let r=trios.filter(t=>(!q||t.text.includes(q))&&(!ty||t.types.has(ty))&&(!g||t.gens.has(g))&&(!un||!t.classic)&&(!state.tri||t.key===state.tri));
+  const q=$("q").value.trim().toLowerCase(), ty=$("type").value, un=$("unusual").checked;
+  let r=trios.filter(t=>(!q||t.text.includes(q))&&(!ty||t.types.has(ty))&&(!selGens.size||t.s.every(x=>selGens.has(x.gen)))&&(!un||!t.classic)&&(!state.tri||t.key===state.tri));
   const s=$("sort").value;
   const f={spread:(x,y)=>x.bs+x.fs-(y.bs+y.fs)||x.dex-y.dex,final:(x,y)=>y.fAvg-x.fAvg,base:(x,y)=>y.bAvg-x.bAvg,dex:(x,y)=>x.dex-y.dex}[s];
   return r.sort(f);
@@ -190,9 +210,9 @@ function render(){
   $("grid").innerHTML=r.length?r.slice(0,shown).map(card).join(""):`<p class="empty">No trios match these filters. Try clearing the search or picking “All triangles”.</p>`;
   $("more").hidden=shown>=r.length;
 }
-["q","type","gen","sort","unusual"].forEach(id=>$(id).addEventListener("input",()=>{shown=60;render()}));
+["q","type","sort","unusual"].forEach(id=>$(id).addEventListener("input",()=>{shown=60;render()}));
 $("more").addEventListener("click",()=>{shown+=60;render()});
-renderChips(); render();
+renderGens(); renderChips(); render();
 }
 </script>
 </body>
