@@ -70,8 +70,8 @@ input:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid 
 .pic.art{background:radial-gradient(circle at 50% 55%,var(--soft) 0 62%,transparent 63%)}
 .pic.sprite{image-rendering:pixelated}
 .pic.sm{width:40px;max-width:40px;flex:none;background:none}
-.evoRow{display:flex;gap:6px;align-items:center;min-width:0}
-.evoRow>div{min-width:0}
+.evoRow{display:flex;flex-wrap:wrap;gap:2px 6px;align-items:center;min-width:0}
+.evoRow>div{min-width:0;overflow-wrap:normal}
 .evo{border-top:1px dashed var(--line);padding-top:6px;margin-top:2px;font-size:.82rem;overflow-wrap:anywhere}
 .evo .arrow{color:var(--muted)}
 .cycle{font-size:.8rem;color:var(--muted);background:var(--soft);border-radius:6px;padding:7px 9px;line-height:1.5}
