@@ -243,7 +243,7 @@ function applyRules(){
   const changed=Object.keys(DEFAULTS).some(k=>R[k]!==DEFAULTS[k]);
   $("resetRules").hidden=!changed;
   $("ruleNote").textContent=changed?"Using your custom rules.":"Change the numbers to explore other rules.";
-  renderChips(); render();
+  render();
 }
 Object.keys(DEFAULTS).forEach(k=>{
   $(k).addEventListener("input",()=>{clearTimeout(ruleTimer);ruleTimer=setTimeout(applyRules,250)});
@@ -279,16 +279,19 @@ $("genChips").addEventListener("click",e=>{
 });
 
 let chipsOpen=false;
-function renderChips(){
-  const list=Object.entries(triCount).sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0]));
+// Type triangle chips list only the triangles left after the other filters, with matching counts.
+function renderChips(counts=triCount){
+  const list=Object.entries(counts).sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0]));
+  // Keep the selected triangle visible (at 0) so it can still be turned off.
+  if(state.tri&&!counts[state.tri])list.unshift([state.tri,0]);
   const vis=chipsOpen?list:list.slice(0,14);
   $("chips").innerHTML=`<button class="tri" type="button" data-k="" aria-pressed="${!state.tri}">All triangles</button>`+
     vis.map(([k,n])=>`<button class="tri" type="button" data-k="${k}" aria-pressed="${state.tri===k}">${dots(k)}${k.replace(/\b\w/g,c=>c.toUpperCase())} <span class="n">${n}</span></button>`).join("")+
-    `<button class="linkish" type="button" id="chipToggle">${chipsOpen?"Show fewer":`Show all ${list.length}`}</button>`;
+    (list.length>14?`<button class="linkish" type="button" id="chipToggle">${chipsOpen?"Show fewer":`Show all ${list.length}`}</button>`:"");
 }
 $("chips").addEventListener("click",e=>{
-  if(e.target.id==="chipToggle"){chipsOpen=!chipsOpen;renderChips();return}
-  const b=e.target.closest(".tri"); if(!b)return; state.tri=b.dataset.k; shown=60; renderChips(); render();
+  if(e.target.id==="chipToggle"){chipsOpen=!chipsOpen;render();return}
+  const b=e.target.closest(".tri"); if(!b)return; state.tri=b.dataset.k; shown=60; render();
 });
 
 function card(t){
@@ -299,9 +302,16 @@ function card(t){
   <div class="cycle"><b>${a.name}</b> beats <b>${b.name}</b>, <b>${b.name}</b> beats <b>${c.name}</b>, <b>${c.name}</b> beats <b>${a.name}</b></div>
   <div class="spread"><span>Starter spread ${t.bs}</span><span>Final spread ${t.fs}</span></div></article>`;
 }
-function filtered(){
+// Every filter except the type triangle.
+function otherFilters(){
   const q=$("q").value.trim().toLowerCase(), un=$("unusual").checked, no=$("noOfficial").checked;
-  let r=trios.filter(t=>(!q||t.text.includes(q))&&[...selTypes].every(x=>t.types.has(x))&&(!selGens.size||t.s.every(x=>selGens.has(x.gen)))&&(!un||!t.classic)&&(!no||!t.official)&&(!state.tri||t.key===state.tri));
+  return trios.filter(t=>(!q||t.text.includes(q))&&[...selTypes].every(x=>t.types.has(x))&&(!selGens.size||t.s.every(x=>selGens.has(x.gen)))&&(!un||!t.classic)&&(!no||!t.official));
+}
+function filtered(){
+  const base=otherFilters(), counts={};
+  base.forEach(t=>counts[t.key]=(counts[t.key]||0)+1);
+  renderChips(counts);
+  const r=state.tri?base.filter(t=>t.key===state.tri):base;
   const s=$("sort").value;
   const f={spread:(x,y)=>x.bs+x.fs-(y.bs+y.fs)||x.dex-y.dex,final:(x,y)=>y.fAvg-x.fAvg,base:(x,y)=>y.bAvg-x.bAvg,dex:(x,y)=>x.dex-y.dex}[s];
   return r.sort(f);
